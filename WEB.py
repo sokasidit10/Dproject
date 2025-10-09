@@ -20,7 +20,7 @@ st.set_page_config(page_title="TNI Career Predictor", page_icon="💼", layout="
 # ----------------------------
 menu = st.sidebar.selectbox(
     "Manu",
-    ["🏠 Predict Career", "📊 YouTube Data Analysis", "🧑‍💼 Profile Page (Piyachart)","🧑‍💼 Profile Page (Kasidit)"]
+    ["🏠 Predict Career", "📊 YouTube Data Analysis", "🧑‍💼 Profile Page (Piyachart)","🧑‍💼 Profile Page (Kasidit)","🧑🏻‍💻 Code"]
 )
 
 # ----------------------------
@@ -30,7 +30,7 @@ grade_map = {"A": 4.0, "B+": 3.5, "B": 3.0, "C+": 2.5, "C": 2.0, "D+": 1.5, "D":
 
 subjects = [
     "ENL-201", "JPN-301", "BIS-111", "INT-105", "INT-204", "INT-301",
-    "ITE-301", "BIS-105", "BIS-201", "BIS-204", "BIS-401", "BIS-402", "BIS-403"
+    "ITE-301", "BIS-105", "BIS-201", "BIS-204", "BIS-401", "BIS-402", "BIS-403","MSC-202"
 ]
 
 # ---------------------- หน้า Predict Career ----------------------
@@ -341,3 +341,127 @@ elif menu == "🧑‍💼 Profile Page (Kasidit)":
     st.markdown("---")
     st.success("👨‍💼 Developed by **Kasidit Sornsud** | Faculty of Information Technology, TNI")
 
+elif menu == "🧑🏻‍💻 Code":
+    st.title("🧑🏻‍💻 Project Code & Model Pipeline")
+    st.caption("สรุปขั้นตอนและโค้ดที่ใช้ในการสร้างระบบ **Career Predictor (Decision Tree)** 🧠")
+    st.markdown("---")
+
+    # ===============================
+    # STEP 1: DATA PREPARATION
+    # ===============================
+    st.header("📘 Step 1: Data Preparation & Preprocessing")
+    st.markdown("""
+    ขั้นตอนแรกคือการโหลดข้อมูลจากไฟล์ CSV,  
+    จากนั้นแปลงเกรดเป็นตัวเลข และเข้ารหัสข้อความในคอลัมน์ `Job` และ `Status` ให้เป็นค่าตัวเลขที่โมเดลเข้าใจได้ 💡
+    """)
+    with st.expander("👀 ดูโค้ดตัวอย่างการเตรียมข้อมูล"):
+        st.code("""
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+# โหลดข้อมูล
+df = pd.read_csv("BBB.csv")
+
+# แปลงเกรดตัวอักษรเป็นตัวเลข
+grade_map = {
+    "A": 4.0, "B+": 3.5, "B": 3.0, "C+": 2.5, "C": 2.0,
+    "D+": 1.5, "D": 1.0, "F": 0.0
+}
+for col in df.columns:
+    if col not in ["Job", "Status"]:
+        df[col] = df[col].map(grade_map)
+
+# เข้ารหัสอาชีพ
+le = LabelEncoder()
+df["Job"] = le.fit_transform(df["Job"])
+
+# แปลงสถานะเป็นตัวเลข
+df["Status"] = df["Status"].map({"Successful": 1, "Unsuccessful": 0})
+        """, language="python")
+
+    st.success("✅ หลังจากขั้นตอนนี้ ข้อมูลพร้อมสำหรับนำไปเทรนโมเดล Machine Learning แล้ว")
+    st.markdown("---")
+
+    # ===============================
+    # STEP 2: MODEL TRAINING
+    # ===============================
+    st.header("🧩 Step 2: Model Training (Decision Tree)")
+    st.markdown("""
+    ใช้อัลกอริทึม **DecisionTreeClassifier** เพื่อเรียนรู้จากข้อมูลเกรดและอาชีพ  
+    จากนั้นจะได้โมเดลที่สามารถทำนายได้ว่า ผู้เรียนเหมาะกับอาชีพที่เลือกหรือไม่ 🎯
+    """)
+    with st.expander("📘 โค้ดเทรนและบันทึกโมเดล"):
+        st.code("""
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+import pickle
+
+# แยก Features และ Target
+X = df.drop(columns=["Status"])
+y = df["Status"]
+
+# แบ่งข้อมูล train/test
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# สร้างโมเดล Decision Tree
+clf = DecisionTreeClassifier(criterion="entropy", max_depth=4, random_state=42)
+clf.fit(X_train, y_train)
+
+# ประเมินผล
+print("Accuracy (train):", clf.score(X_train, y_train))
+print("Accuracy (test):", clf.score(X_test, y_test))
+
+# บันทึกโมเดล
+with open("model_G.pkl", "wb") as f:
+    pickle.dump(clf, f)
+
+# บันทึก encoder
+with open("job_encoder.pkl", "wb") as f:
+    pickle.dump(le, f)
+        """, language="python")
+
+    st.info("💡 ใช้ Entropy เป็นเกณฑ์การแยก node และจำกัดความลึกของต้นไม้ไว้ที่ 4 ชั้น เพื่อป้องกัน overfitting")
+    st.markdown("---")
+
+    
+
+    # ===============================
+    # STEP 4: MODEL DEPLOYMENT (STREAMLIT)
+    # ===============================
+    st.header("🌐 Step 3: Streamlit Deployment")
+    st.markdown("""
+    ขั้นตอนนี้คือการนำโมเดลที่เทรนแล้วมาสร้างเป็นเว็บแอป  
+    โดยใช้ Streamlit เพื่อให้ผู้ใช้สามารถกรอกเกรดและเลือกอาชีพ  
+    แล้วระบบจะทำนายว่าเหมาะสมหรือไม่แบบ real-time ⚡
+    """)
+    with st.expander("🖥️ โค้ดตัวอย่างสำหรับหน้าเว็บทำนาย"):
+        st.code("""
+import streamlit as st
+import pickle
+import numpy as np
+
+# โหลดโมเดล
+with open("model_G.pkl", "rb") as f:
+    model = pickle.load(f)
+
+st.title("💼 Career Suitability Prediction")
+
+# กรอกเกรดตัวอย่าง
+grades = [4.0, 3.5, 3.0, 2.5, 3.5, 4.0]
+career = 2  # Network Engineer
+
+X = np.array(grades).reshape(1, -1)
+prediction = model.predict(X)
+
+if prediction[0] == 1:
+    st.success("✅ อาชีพนี้เหมาะสมกับคุณ!")
+else:
+    st.error("❌ อาชีพนี้อาจไม่เหมาะสมกับคุณ")
+        """, language="python")
+
+    st.success("🚀 ระบบนี้พร้อมใช้งานในหน้า Predict Career แล้ว!")
+    st.markdown("---")
+
+   
